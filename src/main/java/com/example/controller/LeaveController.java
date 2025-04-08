@@ -1,17 +1,12 @@
 package com.example.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.model.LeaveRequest;
 import com.example.service.LeaveService;
@@ -26,35 +21,50 @@ public class LeaveController {
         this.leaveService = leaveService;
     }
 
+    // ✅ Fetch all leave requests (Admin/Manager)
     @GetMapping
     public ResponseEntity<List<LeaveRequest>> getAllLeaves() {
         return ResponseEntity.ok(leaveService.getAllLeaves());
     }
 
+    // ✅ Fetch leave history for a specific employee
+    @GetMapping("/history/{employeeId}")
+    public ResponseEntity<List<LeaveRequest>> getLeaveHistory(@PathVariable String employeeId) {
+        return ResponseEntity.ok(leaveService.getLeaveHistory(employeeId));
+    }
+
+    // ✅ Apply for leave (Updated to validate required fields)
     @PostMapping
     public ResponseEntity<?> applyForLeave(@RequestBody LeaveRequest leaveRequest) {
-        Optional<LeaveRequest> savedLeave = leaveService.applyForLeave(leaveRequest);
-        if (savedLeave.isPresent()) {
-            return ResponseEntity.ok(savedLeave.get());
-        } 
-        else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid leave request");
+        try {
+            // Validate required fields
+            if (leaveRequest.getUserId() == null || leaveRequest.getFromDate() == null || leaveRequest.getToDate() == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing required fields!");
+            }
+
+            Optional<LeaveRequest> savedLeave = leaveService.applyForLeave(leaveRequest);
+
+            // ✅ Ensure consistent return type (ResponseEntity)
+            if (savedLeave.isPresent()) {
+                return ResponseEntity.ok(savedLeave.get()); // Return full leave object
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid leave request");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server error: " + e.getMessage());
         }
     }
 
-    @PutMapping("/{leaveId}/approve")
-    public ResponseEntity<String> approveLeave(@PathVariable String leaveId) {
-        if (leaveService.approveLeave(leaveId)) {
-            return ResponseEntity.ok("Leave Approved!");
+    // ✅ Approve or Reject leave request dynamically
+    @PutMapping("/{leaveId}/status")
+    public ResponseEntity<String> updateLeaveStatus(@PathVariable String leaveId, @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        if (status == null) {
+            return ResponseEntity.status(400).body("Status is required!"); // ✅ Updated: Handle missing status field
         }
-        return ResponseEntity.status(404).body("Leave request not found or already processed");
-    }
-
-    @PutMapping("/{leaveId}/reject")
-    public ResponseEntity<String> rejectLeave(@PathVariable String leaveId) {
-        if (leaveService.rejectLeave(leaveId)) {
-            return ResponseEntity.ok("Leave Rejected!");
+        if (leaveService.updateLeaveStatus(leaveId, status)) {
+            return ResponseEntity.ok("Leave status updated to: " + status);
         }
-        return ResponseEntity.status(404).body("Leave request not found or already processed");
+        return ResponseEntity.status(400).body("Invalid leave ID or status");
     }
 }

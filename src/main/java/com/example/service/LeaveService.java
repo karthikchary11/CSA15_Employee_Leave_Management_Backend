@@ -15,34 +15,42 @@ public class LeaveService {
     @Autowired
     private LeaveRequestRepository leaveRequestRepository;
 
+    // ✅ Fetch all leave requests (Admin/Manager)
     public List<LeaveRequest> getAllLeaves() {
         return leaveRequestRepository.findAll();
     }
 
+    // ✅ Fetch leave history for a specific employee
+    public List<LeaveRequest> getLeaveHistory(String employeeId) {
+        return leaveRequestRepository.findByUserId(employeeId);
+    }
+
+    // ✅ Apply for leave (Updated to validate required fields)
     public Optional<LeaveRequest> applyForLeave(LeaveRequest leaveRequest) {
-        leaveRequest.setStatus(LeaveStatus.PENDING);  // ✅ Use Enum
+        if (leaveRequest.getUserId() == null || leaveRequest.getFromDate() == null || leaveRequest.getToDate() == null) {
+            return Optional.empty(); // ✅ Updated: Return empty optional if required fields are missing
+        }
+        leaveRequest.setStatus(LeaveStatus.PENDING);
         leaveRequest.setCreatedAt(java.time.LocalDate.now());
         return Optional.of(leaveRequestRepository.save(leaveRequest));
     }
 
-    public boolean approveLeave(String leaveId) {
+    // ✅ Approve or Reject leave dynamically (Updated to handle null status)
+    public boolean updateLeaveStatus(String leaveId, String status) {
         Optional<LeaveRequest> leaveOptional = leaveRequestRepository.findById(leaveId);
-        if (leaveOptional.isPresent() && leaveOptional.get().getStatus() == LeaveStatus.PENDING) {  // ✅ Enum Comparison
+        if (leaveOptional.isPresent()) {
             LeaveRequest leave = leaveOptional.get();
-            leave.setStatus(LeaveStatus.APPROVED);  // ✅ Use Enum
-            leaveRequestRepository.save(leave);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean rejectLeave(String leaveId) {
-        Optional<LeaveRequest> leaveOptional = leaveRequestRepository.findById(leaveId);
-        if (leaveOptional.isPresent() && leaveOptional.get().getStatus() == LeaveStatus.PENDING) {  // ✅ Enum Comparison
-            LeaveRequest leave = leaveOptional.get();
-            leave.setStatus(LeaveStatus.REJECTED);  // ✅ Use Enum
-            leaveRequestRepository.save(leave);
-            return true;
+            if (leave.getStatus() == LeaveStatus.PENDING) {
+                if ("APPROVED".equalsIgnoreCase(status)) {
+                    leave.setStatus(LeaveStatus.APPROVED);
+                } else if ("REJECTED".equalsIgnoreCase(status)) {
+                    leave.setStatus(LeaveStatus.REJECTED);
+                } else {
+                    return false; // ✅ Updated: Handle invalid status
+                }
+                leaveRequestRepository.save(leave);
+                return true;
+            }
         }
         return false;
     }

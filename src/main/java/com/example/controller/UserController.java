@@ -18,7 +18,6 @@ public class UserController {
     public UserController(UserService userService) {
         this.userService = userService;
     }
-    
 
     // ✅ Get all users (Admin only)
     @GetMapping
@@ -43,6 +42,18 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
         return userService.deleteUser(id);
-    
+    }
+
+    // ✅ Approve Manager (Set `approved: true`)
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<?> approveManager(@PathVariable String id) {
+        return userService.approveManager(id);
+    }
+
+    // ✅ Promote Employee to Manager or Admin
+    @PutMapping("/{id}/role")
+    public ResponseEntity<?> promoteUser(@PathVariable String id, @RequestBody UpdateUserRequest request) {
+        boolean success = userService.updateUserRole(id, request.getRole());
+        return success ? ResponseEntity.ok("User promoted successfully") : ResponseEntity.badRequest().body("Invalid role or operation not allowed");
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/password-reset") // ✅ Changed base path to avoid conflict
 public class PasswordResetController {
 
     private final PasswordResetService resetService;
@@ -14,14 +14,14 @@ public class PasswordResetController {
         this.resetService = resetService;
     }
 
-    @PostMapping("/forgot-password")
+    @PostMapping("/request")
     public ResponseEntity<String> forgotPassword(@RequestParam String email) {
         boolean tokenGenerated = resetService.generateResetToken(email);
         return tokenGenerated ? ResponseEntity.ok("Password reset link sent to email")
                               : ResponseEntity.status(404).body("Email not found");
     }
 
-    @PostMapping("/reset-password")
+    @PostMapping("/confirm")
     public ResponseEntity<String> resetPassword(@RequestParam String token, @RequestParam String newPassword) {
         boolean passwordReset = resetService.resetPassword(token, newPassword);
         return passwordReset ? ResponseEntity.ok("Password successfully reset")
